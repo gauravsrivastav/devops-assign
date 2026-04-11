@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: chat-backend
+    expose:
+      - "8000"
+    restart: always
+    networks:
+      - chat-nw
+
+  nginx:
+    image: nginx:alpine
+    container_name: chat-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro    #uncommet this to map
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - chat-nw
+
+networks:
+  chat-nw:
+    driver: bridge  #both services placed on shared bridge n/w
+

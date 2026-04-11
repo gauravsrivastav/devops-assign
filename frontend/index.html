@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat | FastAPI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #334155;
+            --message-self: #3b82f6;
+            --message-other: #1e293b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 900px;
+            height: 95vh;
+            background-color: var(--bg-panel);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .chat-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .header-content h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .status {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(34, 197, 94, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .connection-status {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background-color: #475569;
+            color: #f8fafc;
+        }
+
+        .connection-status.connected {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .connection-status.disconnected {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background-color: var(--border);
+            border-radius: 4px;
+        }
+
+        .message {
+            max-width: 75%;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.other { align-self: flex-start; }
+        .message.self { align-self: flex-end; }
+
+        .message-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .message.self .message-meta { justify-content: flex-end; }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.other .message-bubble {
+            background-color: var(--message-other);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 2px;
+        }
+
+        .message.self .message-bubble {
+            background-color: var(--message-self);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .system-message {
+            align-self: center;
+            background-color: rgba(71, 85, 105, 0.3);
+            color: var(--text-muted);
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            margin: 8px 0;
+        }
+
+        .chat-input-area {
+            padding: 20px 24px;
+            background-color: rgba(30, 41, 59, 0.95);
+            border-top: 1px solid var(--border);
+        }
+
+        #chat-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        #message-input {
+            flex: 1;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 14px 20px;
+            border-radius: 24px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #message-input:focus { border-color: var(--accent); }
+
+        #send-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #send-btn:hover { background-color: var(--accent-hover); }
+
+        @media (max-width: 640px) {
+            .chat-container { height: 100vh; border-radius: 0; border: none; }
+            .message { max-width: 85%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <div class="header-content">
+                <h1>Global Chat</h1>
+                <p class="status">
+                    <span class="pulse"></span>
+                    <span id="user-count">0</span> Users Online
+                </p>
+            </div>
+            <div class="connection-status" id="connection-status">Connecting...</div>
+        </header>
+
+        <main class="chat-messages" id="chat-messages">
+            <!-- Messages will appear here -->
+        </main>
+
+        <footer class="chat-input-area">
+            <form id="chat-form">
+                <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" required />
+                <button type="submit" id="send-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const messagesContainer = document.getElementById('chat-messages');
+            const form = document.getElementById('chat-form');
+            const input = document.getElementById('message-input');
+            const connectionStatus = document.getElementById('connection-status');
+            const userCount = document.getElementById('user-count');
+            
+            // Connect to WebSocket via relative protocol to support both http and https
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Defaulting to host for nginx reverse proxy routing
+            let wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            // Fallback for local testing without nginx if directly opening the file
+            if (window.location.protocol === 'file:') {
+                wsUrl = 'ws://127.0.0.1:8000/ws';
+            }
+
+            const socket = new WebSocket(wsUrl);
+
+            const scrollToBottom = () => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
+
+            socket.onopen = () => {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'connection-status connected';
+            };
+
+            socket.onclose = () => {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'connection-status disconnected';
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'system') {
+                    const div = document.createElement('div');
+                    div.className = 'system-message';
+                    div.textContent = data.message;
+                    messagesContainer.appendChild(div);
+                } 
+                else if (data.type === 'stats') {
+                    userCount.textContent = data.count;
+                } 
+                else if (data.type === 'chat') {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `message ${data.isSelf ? 'self' : 'other'}`;
+                    
+                    const metaDiv = document.createElement('div');
+                    metaDiv.className = 'message-meta';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = data.isSelf ? 'You' : data.username;
+                    
+                    const timeSpan = document.createElement('span');
+                    timeSpan.textContent = data.time;
+                    
+                    metaDiv.appendChild(nameSpan);
+                    metaDiv.appendChild(timeSpan);
+                    
+                    const bubbleDiv = document.createElement('div');
+                    bubbleDiv.className = 'message-bubble';
+                    bubbleDiv.textContent = data.message;
+                    
+                    msgDiv.appendChild(metaDiv);
+                    msgDiv.appendChild(bubbleDiv);
+                    
+                    messagesContainer.appendChild(msgDiv);
+                }
+                scrollToBottom();
+            };
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const msg = input.value.trim();
+                if (msg && socket.readyState === WebSocket.OPEN) {
+                    socket.send(msg);
+                    input.value = '';
+                }
+            });
+            
+            // Reconnect logic or status update for UI feedback
+            window.addEventListener('focus', () => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    connectionStatus.textContent = 'Connected';
+                    connectionStatus.className = 'connection-status connected';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
