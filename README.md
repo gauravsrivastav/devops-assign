@@ -137,8 +137,16 @@ GitHub Actions Runner
            └─ docker image prune -f
 ```
 
-### Required GitHub Secrets
- 
+### Required GitHub Secrets  
+1. Generate SSH Key on your EC2 server
+ssh-keygen -t rsa -b 4096 -C "github-actions-deploy" -f ~/.ssh/github_actions -N ""
+2. Add public key to authorized_keys on server
+cat ~/.ssh/github_actions.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+3. Copy the private key (you'll need this in next step when configure github action)
+cat ~/.ssh/github_actions
+
+4. Add Secrets to GitHub 
 | Secret | Description |
 |---|---|
 | `SERVER_HOST` | Public IP or hostname of your server |
@@ -267,7 +275,7 @@ Open `http://<YOUR_SERVER_IP>` in two browser tabs to test multi-user chat.
 ### Chat Application
 ![Chat Application](screenshots/single-user.png)
 
-### Multi-user Chat (Two Browser Tabs)
+### Multi-user Chat (Two-Three Browser Tabs)
 ![Multi-user Chat](screenshots/multi-user.png)
  
 ---
